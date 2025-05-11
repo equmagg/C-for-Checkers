@@ -170,9 +170,52 @@ DLL_EXPORT void get_all_moves(const board b, int8_t* out_moves, int8_t color) {
         }
     }
 }
-DLL_EXPORT void move(board b, int8_t startPos, int8_t endPos) {
+DLL_EXPORT int8_t move(board b, int8_t startPos, int8_t endPos) {
     b[endPos] = b[startPos];
     b[startPos] = 0;
+    int8_t direction = -1;
+    int8_t offset = endPos - startPos;
+    if(offset < 0) {//forward 0 1
+        int8_t diagonal = startPos;
+        int8_t diagonal2 = startPos;
+        for (int i = 0; i < 7; i++) {
+            diagonal = get_diagonal(diagonal, 0);
+            if (diagonal == endPos) {
+                direction = 0;
+                break;
+            }
+            diagonal2 = get_diagonal(diagonal2, 1);
+            if (diagonal2 == endPos) {
+                direction = 1;
+                break;
+            }
+        }
+    }
+    else if(offset > 0) {//back 2 3
+        int8_t diagonal = startPos;
+        int8_t diagonal2 = startPos;
+        for (int i = 0; i < 7; i++) {
+            diagonal = get_diagonal(diagonal, 2);
+            if (diagonal == endPos) {
+                direction = 0;
+                break;
+            }
+            diagonal2 = get_diagonal(diagonal2, 3);
+            if (diagonal2 == endPos) {
+                direction = 1;
+                break;
+            }
+        }
+    }
+    
+    if (direction = -1) return 0;
+    int inverted = 3 - direction;
+    int8_t diagonal = get_diagonal(endPos, inverted);
+    if (diagonal != -1 && b[diagonal] != EMPTY) {
+        b[diagonal] = 0;
+        return 1;//capture
+    }
+    return 0;
 }
 DLL_EXPORT int test() {
     return 1;
