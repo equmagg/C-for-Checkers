@@ -58,11 +58,11 @@ DLL_EXPORT void init_board(board b) {
         }
     }
 }
-int get_diagonal(int pos, int direction) {
+int8_t get_diagonal(int8_t pos, int direction) {
     int row = pos / 4+1;
     int even = (row % 2 == 0);
 
-    int offset = 0;
+    int8_t offset = 0;
     switch (direction) {
     case 0: offset = even ? -5 : -4; break; // top-left
     case 1: offset = even ? -4 : -3; break; // top-right
@@ -70,7 +70,7 @@ int get_diagonal(int pos, int direction) {
     case 3: offset = even ? +4 : +5; break; // bottom-right
     default: return -1;
     }
-    int target = pos + offset; 
+    int8_t target = pos + offset; 
     if (target < 0 || target >= 32) return -1;
 
     int new_row = target / 4+1;
@@ -78,7 +78,7 @@ int get_diagonal(int pos, int direction) {
 
     return target;
 }
-int get_diagonal_move(const board b, int pos, int i, int* capture) {
+int8_t get_diagonal_move(const board b, int8_t pos, int i, int8_t* capture) {
     int diagonal = get_diagonal(pos, i);
     if (diagonal == -1) return -1;
     if (b[diagonal] == EMPTY && *capture == 0)
@@ -94,8 +94,8 @@ int get_diagonal_move(const board b, int pos, int i, int* capture) {
     }
     return -1;
 }
-DLL_EXPORT int can_capture(const board b, int color) {
-    int capture = 0;
+DLL_EXPORT int8_t can_capture(const board b, int8_t color) {
+    int8_t capture = 0;
     if (color == -1) color = 0;
     for (int pos = 0; pos < 32; pos++) {
         if (b[pos] != EMPTY && (b[pos] & WHITE) == color) {//color 0 == black, not 0 == white
@@ -105,15 +105,15 @@ DLL_EXPORT int can_capture(const board b, int color) {
                 if ((b[pos] & BLACK) != 0) start_diagonal = 2;
                 for (int i = start_diagonal; i < start_diagonal + 2; i++)
                 {
-                    int diagonal = get_diagonal_move(b, i, i, &capture);
+                    int8_t diagonal = get_diagonal_move(b, i, i, &capture);
                 }
             }
             else
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    int currentPos = get_diagonal_move(b, pos, i, &capture);
-                    while (currentPos != -1)
+                    int8_t currentPos = get_diagonal_move(b, pos, i, &capture);
+                    while (currentPos != 255)
                     {
                         currentPos = get_diagonal_move(b, currentPos, i, &capture);
                     }
@@ -123,7 +123,7 @@ DLL_EXPORT int can_capture(const board b, int color) {
     }
     return capture;
 }
-DLL_EXPORT void get_moves(const board b, int pos, int* out_moves, int* count, int* capture) {
+DLL_EXPORT void get_moves(const board b, int8_t pos, int8_t* out_moves, int8_t* count, int8_t* capture) {
     *count = 0;
     CellFlag piece = b[pos];
     if (piece == EMPTY) return;
@@ -136,15 +136,15 @@ DLL_EXPORT void get_moves(const board b, int pos, int* out_moves, int* count, in
         if ((piece & BLACK) != 0) start_diagonal = 2;
         for (int i = start_diagonal; i < start_diagonal+2; i++) 
         {
-            int diagonal = get_diagonal_move(b, pos, i, capture);
-            out_moves[(*count)++] = diagonal;
+            int8_t diagonal = get_diagonal_move(b, pos, i, capture);
+            if(diagonal != -1) out_moves[(*count)++] = diagonal;
         }
     }
     else 
     {
         for (int i = 0; i < 4; i++)
         {
-            int currentPos = get_diagonal_move(b, pos, i, capture);
+            int8_t currentPos = get_diagonal_move(b, pos, i, capture);
             while (currentPos != -1) 
             {
                 out_moves[(*count)++] = currentPos;
@@ -153,14 +153,29 @@ DLL_EXPORT void get_moves(const board b, int pos, int* out_moves, int* count, in
         }
     }
 }
-DLL_EXPORT board* get_board() {
-    board* b = (board*)malloc(sizeof(board));
-    init_board(*b);
-    return b;
+DLL_EXPORT void get_all_moves(const board b, int8_t* out_moves, int8_t color) {
+    if (color == -1) color = 0;
+    int8_t count = 0;
+    int8_t capture = can_capture(b, color);
+    for (int pos = 0; pos < 32; pos++) {
+        if (b[pos] != EMPTY && (b[pos] & WHITE) == color) {
+            int8_t moves[13];
+            int8_t c;
+            get_moves(b, pos, moves, &c, &capture);
+            for (int i = 0; i < c; i++) {
+                out_moves[count++] = pos;
+                out_moves[count++] = moves[i];
+            }
+        
+        }
+    }
 }
-__declspec(dllexport) void test() {
-    printf("1");
-    //return 1;
+DLL_EXPORT void move(board b, int8_t startPos, int8_t endPos) {
+    b[endPos] = b[startPos];
+    b[startPos] = 0;
+}
+DLL_EXPORT int test() {
+    return 1;
 }
 #ifdef __cplusplus
 }
