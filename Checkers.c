@@ -108,21 +108,32 @@ DLL_EXPORT int8_t can_capture(const board b, int8_t color) {
                 for (int i = 0; i < 4; i++)
                 {
                     int8_t currentPos = pos;
-                    int8_t temp_capture = 0;
+                    int seen_enemy = 0;
 
                     while (1)
                     {
-                        int8_t nextPos = get_diagonal_move(b, currentPos, i, &temp_capture);
+                        int8_t nextPos = get_diagonal(currentPos, i);
                         if (nextPos == -1) break;
 
-                        if (temp_capture)
+                        if (b[nextPos] == EMPTY)
                         {
-                            capture = 1;
-                            return capture;
+                            if (seen_enemy) {
+                                return 1;
+                            }
+                            currentPos = nextPos;
                         }
-
-                        currentPos = nextPos;
+                        else if ((b[nextPos] & WHITE) != (b[pos] & WHITE))
+                        {
+                            if (seen_enemy) break; 
+                            seen_enemy = 1;
+                            currentPos = nextPos;
+                        }
+                        else
+                        {
+                            break; 
+                        }
                     }
+
 
                 }
             }
@@ -132,19 +143,32 @@ DLL_EXPORT int8_t can_capture(const board b, int8_t color) {
 }
 DLL_EXPORT void get_moves(const board b, int8_t pos, int8_t* out_moves, int8_t* count, int8_t* capture) {
     *count = 0;
+
     CellFlag piece = b[pos];
-    if (piece == EMPTY) return;
-    if (pos < 0 || pos > 31) return;
+    if (piece == EMPTY || pos < 0 || pos > 31) return;
 
+    int8_t temp_moves[32];
+    int8_t temp_count = 0;
+    int8_t local_capture = 0;
 
-    if ((piece & KING) == 0) //if not king
+    if ((piece & KING) == 0) 
     {
-        int start_diagonal = 0;
-        if ((piece & BLACK) != 0) start_diagonal = 2;
-        for (int i = start_diagonal; i < start_diagonal+2; i++) 
+        int start_diagonal = ((piece & BLACK) != 0) ? 2 : 0;
+        for (int i = start_diagonal; i < start_diagonal + 2; i++)
         {
-            int8_t diagonal = get_diagonal_move(b, pos, i, capture);
-            if(diagonal != -1) out_moves[(*count)++] = diagonal;
+            int8_t temp_cap = 0;
+            int8_t diagonal = get_diagonal_move(b, pos, i, &temp_cap);
+
+            if (diagonal != -1) {
+                if (temp_cap) {
+                    if (!local_capture) temp_count = 0;
+                    temp_moves[temp_count++] = diagonal;
+                    local_capture = 1;
+                }
+                else if (!local_capture && *capture == 0) {
+                    temp_moves[temp_count++] = diagonal;
+                }
+            }
         }
     }
     else 
@@ -152,28 +176,56 @@ DLL_EXPORT void get_moves(const board b, int8_t pos, int8_t* out_moves, int8_t* 
         for (int i = 0; i < 4; i++)
         {
             int8_t currentPos = pos;
-            int8_t temp_capture = 0;
+            int seen_enemy = 0;
 
             while (1)
             {
-                int8_t nextPos = get_diagonal_move(b, currentPos, i, &temp_capture);
-
+                int8_t nextPos = get_diagonal(currentPos, i);
                 if (nextPos == -1) break;
 
-                out_moves[(*count)++] = nextPos;
-
-                if (temp_capture)
+                if (b[nextPos] == EMPTY)
                 {
-                    *capture = 1;
+                    if (seen_enemy)
+                    {
+                        if (!local_capture) temp_count = 0;
+                        temp_moves[temp_count++] = nextPos;
+                        local_capture = 1;
+                        break;
+                    }
+                    else if (!local_capture && *capture == 0)
+                    {
+                        temp_moves[temp_count++] = nextPos;
+                        currentPos = nextPos;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else if ((b[nextPos] & WHITE) != (piece & WHITE))
+                {
+                    if (seen_enemy) break;
+                    seen_enemy = 1;
+                    currentPos = nextPos;
+                }
+                else
+                {
                     break;
                 }
-
-                currentPos = nextPos;
             }
+        }
+    }
 
+    *capture = local_capture;
+
+    if (*capture == 1 || local_capture == 0)
+    {
+        for (int i = 0; i < temp_count; i++) {
+            out_moves[(*count)++] = temp_moves[i];
         }
     }
 }
+
 DLL_EXPORT void get_all_moves(const board b, int8_t* out_moves, int8_t color) {
     if (color == -1) color = 0;
     int8_t count = 0;
