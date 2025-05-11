@@ -105,7 +105,7 @@ DLL_EXPORT int8_t can_capture(const board b, int8_t color) {
                 if ((b[pos] & BLACK) != 0) start_diagonal = 2;
                 for (int i = start_diagonal; i < start_diagonal + 2; i++)
                 {
-                    int8_t diagonal = get_diagonal_move(b, i, i, &capture);
+                    int8_t diagonal = get_diagonal_move(b, pos, i, &capture);
                 }
             }
             else
@@ -113,7 +113,7 @@ DLL_EXPORT int8_t can_capture(const board b, int8_t color) {
                 for (int i = 0; i < 4; i++)
                 {
                     int8_t currentPos = get_diagonal_move(b, pos, i, &capture);
-                    while (currentPos != 255)
+                    while (currentPos != -1)
                     {
                         currentPos = get_diagonal_move(b, currentPos, i, &capture);
                     }
@@ -171,9 +171,17 @@ DLL_EXPORT void get_all_moves(const board b, int8_t* out_moves, int8_t color) {
     }
 }
 DLL_EXPORT int8_t move(board b, int8_t startPos, int8_t endPos) {
+    if (startPos < 0 || startPos>31 || endPos < 0 || endPos>31) return 0;
     b[endPos] = b[startPos];
     b[startPos] = 0;
     int8_t direction = -1;
+    int row = endPos / 4;
+    if (row == 0 && b[endPos] == WHITE_MAN) {
+        b[endPos] = WHITE_KING;
+    }
+    else if (row == 7 && b[endPos] == BLACK_MAN) {
+        b[endPos] = BLACK_KING;
+    }
     int8_t offset = endPos - startPos;
     if(offset < 0) {//forward 0 1
         int8_t diagonal = startPos;
@@ -197,23 +205,26 @@ DLL_EXPORT int8_t move(board b, int8_t startPos, int8_t endPos) {
         for (int i = 0; i < 7; i++) {
             diagonal = get_diagonal(diagonal, 2);
             if (diagonal == endPos) {
-                direction = 0;
+                direction = 2;
                 break;
             }
             diagonal2 = get_diagonal(diagonal2, 3);
             if (diagonal2 == endPos) {
-                direction = 1;
+                direction = 3;
                 break;
             }
         }
     }
-    
-    if (direction = -1) return 0;
+    if (direction == -1) return 0;
     int inverted = 3 - direction;
     int8_t diagonal = get_diagonal(endPos, inverted);
     if (diagonal != -1 && b[diagonal] != EMPTY) {
         b[diagonal] = 0;
-        return 1;//capture
+        int8_t capture = 0;
+        int8_t count = 0;
+        int8_t moves[13];
+        get_moves(b, endPos, moves, &count, &capture);
+        return capture;//can capture again
     }
     return 0;
 }
