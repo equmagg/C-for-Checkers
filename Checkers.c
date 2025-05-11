@@ -229,20 +229,26 @@ DLL_EXPORT void get_moves(const board b, int8_t pos, int8_t* out_moves, int8_t* 
 DLL_EXPORT void get_all_moves(const board b, int8_t* out_moves, int8_t color) {
     if (color == -1) color = 0;
     int8_t count = 0;
-    int8_t capture = can_capture(b, color);
+    int8_t global_capture = can_capture(b, color);
+
     for (int pos = 0; pos < 32; pos++) {
         if (b[pos] != EMPTY && (b[pos] & WHITE) == color) {
             int8_t moves[13];
-            int8_t temp_count;
-            get_moves(b, pos, moves, &temp_count, &capture);
-            for (int i = 0; i < temp_count; i++) {
-                out_moves[count++] = pos;
-                out_moves[count++] = moves[i];
+            int8_t temp_count = 0;
+            int8_t temp_capture = 0;
+
+            get_moves(b, pos, moves, &temp_count, &temp_capture);
+
+            if ((global_capture && temp_capture) || (!global_capture && temp_count > 0)) {
+                for (int i = 0; i < temp_count; i++) {
+                    out_moves[count++] = pos;
+                    out_moves[count++] = moves[i];
+                }
             }
-        
         }
     }
 }
+
 DLL_EXPORT int8_t move(board b, int8_t startPos, int8_t endPos) {
     if (startPos < 0 || startPos>31 || endPos < 0 || endPos>31) return 0;
     b[endPos] = b[startPos];
@@ -289,16 +295,22 @@ DLL_EXPORT int8_t move(board b, int8_t startPos, int8_t endPos) {
         }
     }
     if (direction == -1) return 0;
+
     int inverted = 3 - direction;
     int8_t diagonal = get_diagonal(endPos, inverted);
+
     if (diagonal != -1 && b[diagonal] != EMPTY) {
-        b[diagonal] = 0;
-        int8_t capture = 0;
-        int8_t count = 0;
-        int8_t moves[13];
-        get_moves(b, endPos, moves, &count, &capture);
-        return capture;//can capture again
+        b[diagonal] = EMPTY;
+
+        if (b[endPos] != EMPTY) {
+            int8_t capture = 0;
+            int8_t count = 0;
+            int8_t moves[13];
+            get_moves(b, endPos, moves, &count, &capture);
+            return capture;
+        }
     }
+
     return 0;
 }
 DLL_EXPORT int test() {
